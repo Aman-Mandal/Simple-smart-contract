@@ -2,11 +2,16 @@
 
 pragma solidity ^0.8.7;
 
-import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import "./PriceConverter.sol";
 
 contract FundMe{
+    // attaching our Library to uint256
+    using PriceConverter for uint256;
 
-    uint256 public minimumUSD = 50 * 1e18;
+    uint256 public minimumUSD = 10 * 1e18;
+
+    address[] public funders;
+    mapping(address => uint256) public addressToAmountFunded;
 
     function fund() public payable{
         // Want to able to set a minimum fund in the USD
@@ -14,28 +19,16 @@ contract FundMe{
 
         // 'msg' is a global variable; msg.value gives is the amount send with the contract
         // 'require' is like response-error 
-        require(getConversionRate(msg.value) >= minimumUSD, "Didn't send enough !!"); // 1e18 == 1 * 10 ** 18 === 10000000000000000
+
+        // before : require(getConversionRate(msg.value))
+        // after using library we can use the library functions as the methods like js
+        require(msg.value.getConversionRate() >= minimumUSD, "Didn't send enough !!"); // 1e18 == 1 * 10 ** 18 === 10000000000000000
+        funders.push(msg.sender);    // msg.sender will give the address of the user that calls the fund function
+
+        // this will create a map of 'key' of addressess and value of 'amount'
+        addressToAmountFunded[msg.sender] = msg.value;
     }
 
-    function getPrice() public view returns(uint256) {
-        // for using another contract we need 2 things, ABI & Address
-        // Address: 	0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e
-        AggregatorV3Interface priceFeed = AggregatorV3Interface(0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e);
-        (, int price, , , ) = priceFeed.latestRoundData(); // ETH price in USD
-        return uint256(price * 1e10); // 1 ** 10 = 10000000000
-
-    }
-
-    function getVersion() public view returns(uint256){
-        AggregatorV3Interface priceFeed = AggregatorV3Interface(0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e);
-        return priceFeed.version();
-    }
-
-    function getConversionRate(uint256 ethAmount) public view returns (uint256) {
-        uint256 ethPrice = getPrice(); // 1 Eth in USD
-        uint256 ethAmountInUSD = (ethPrice * ethAmount) / 1e18;
-        return ethAmountInUSD;
-    }
-
+    
     
 }
